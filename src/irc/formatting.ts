@@ -50,6 +50,7 @@ htmlNames.forEach((htmlName) => {
 });
 
 const STYLE_COLOR = '\u0003';
+const STYLE_COLOR24 = '\u0004';
 const STYLE_BOLD = '\u0002';
 const STYLE_ITALICS = '\u001d';
 const STYLE_UNDERLINE = '\u001f';
@@ -261,15 +262,20 @@ export function ircToHtml(text: string): string {
     // - The colour formatting character (\x03) followed by 0 to 2 digits for
     //   the foreground colour and (optionally) a comma and 1-2 digits for the
     //   background colour.
+    // - The colour formatting character (\x04) in the same format as \x03 but
+    //   with 6 character hex codes.
     // eslint-disable-next-line no-control-regex
-    const colorRegex = /[\x02\x1d\x1f\x0f\x16]|\x03(\d{0,2})(?:,(\d{1,2}))?/g;
+    const colorRegex = /[\x02\x1d\x1f\x0f\x16]|\x03(\d{0,2})(?:,(\d{1,2}))?|\x04([0-9a-fA-F]{6}?)(?:,([0-9a-fA-F]{6}))?/g;
 
     // Maintain a small state machine of which tags are open so we can close the right
     // ones on RESET codes and toggle appropriately if they do the same code again.
     let state = Object.assign({}, STYLE_DEFAULT_STATE);
 
     // Return message with codes replaced
-    return text.replace(colorRegex, function(match, fg, bg) {
+    return text.replace(colorRegex, function(match, fg, bg, fg2, bg2) {
+        fg = fg || fg2;
+        bg = bg || bg2;
+
         let tags = '';
 
         // Modify state with the current matched formatting character
@@ -321,7 +327,29 @@ export function ircToHtml(text: string): string {
                     tags += htmlTag(state, 'font', true);
                 }
                 return tags;
-
+            case STYLE_COLOR24:
+                // Close font tag
+                if (state.color || state.bcolor) {
+                    tags += htmlTag(state, 'font', false);
+                }
+                // hex code instead of color name
+                // Foreground colour
+                if (fg) {
+                    state.color = '#' + fg;
+                }
+                // Background colour
+                if (bg) {
+                    state.bcolor ='#' + bg;
+                }
+                // Neither
+                if (!fg && !bg) {
+                    state.color = state.bcolor = null;
+                }
+                 // Create font with style
+                 if (state.color || state.bcolor) {
+                    tags += htmlTag(state, 'font', true);
+                }
+                return tags;
             // Unknown or ignored character
             default:
                 return tags;
