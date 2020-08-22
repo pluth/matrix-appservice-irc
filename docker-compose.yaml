@@ -1,0 +1,11 @@
+version: "3.3"
+
+services:
+  matrix_irc:
+    image: matrix-irc
+    network_mode: host
+    volumes:
+      - /etc/matrix-appservice-irc/config.yaml:/data/config.yaml
+      - /etc/matrix-appservice-irc/registration.yaml:/data/appservice-registration-irc.yaml
+      - /etc/matrix-appservice-irc/passkey.pem:/etc/matrix-appservice-irc/passkey.pem
+    restart: always
